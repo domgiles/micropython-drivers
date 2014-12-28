@@ -21,6 +21,7 @@
 # THE SOFTWARE.
 
 import pyb
+import font
 
 # Constants
 DISPLAYOFF          = 0xAE
@@ -185,3 +186,29 @@ class SSD1306(object):
     self.write_command(SETCONTRAST)
     self.write_command(contrast)
 
+  def draw_text(self, x, y, string, size=1, space=1):
+    def pixel_x(char_number, char_column, point_row):
+      char_offset = x + char_number * size * font.cols + space * char_number
+      pixel_offset = char_offset + char_column * size + point_row
+      return self.columns - pixel_offset
+
+    def pixel_y(char_row, point_column):
+      char_offset = y + char_row * size
+      return char_offset + point_column
+
+    def pixel_mask(char, char_column, char_row):
+      char_index_offset = ord(char) * font.cols
+      return font.bytes[char_index_offset + char_column] >> char_row & 0x1
+
+    pixels = (
+      (pixel_x(char_number, char_column, point_row),
+       pixel_y(char_row, point_column),
+       pixel_mask(char, char_column, char_row))
+      for char_number, char in enumerate(string)
+      for char_column in range(font.cols)
+      for char_row in range(font.rows)
+      for point_column in range(size)
+      for point_row in range(1, size + 1))
+
+    for pixel in pixels:
+      self.set_pixel(*pixel)
